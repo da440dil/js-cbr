@@ -1,5 +1,8 @@
 # @da440dil/cbr
 
+![GitHub Actions](https://github.com/da440dil/js-cbr/actions/workflows/ci.yml/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/da440dil/js-cbr/badge.svg?branch=main)](https://coveralls.io/github/da440dil/js-cbr?branch=main)
+
 [Circuit breaker](https://martinfowler.com/bliki/CircuitBreaker.html).
 
 [Example](./examples/decorator.ts) decorator ([typescript](https://www.typescriptlang.org/) [version](https://github.com/microsoft/TypeScript/releases/tag/v5.0.2) >= 5):
