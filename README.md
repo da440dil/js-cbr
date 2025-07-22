@@ -15,7 +15,9 @@ import { Circuit, Breakable } from '@da440dil/cbr';
 // Create circuit which uses "Fixed Window" algorithm to store counters for 10s,
 // switches from "Closed" to "Open" state on first error, from "Open" to "HalfOpen" state after 100ms,
 // from "HalfOpen" to "Closed" state on first success.
-const circuit = Circuit.fixed({ windowSize: 10000, errorThreshold: 1, resetTimeout: 100, successThreshold: 1 });
+const circuit = Circuit.fixed({
+	windowSize: 10000, errorThreshold: 1, resetTimeout: 100, successThreshold: 1
+});
 
 circuit.on('state', (state) => {
 	console.log(`STATE: ${state}`);

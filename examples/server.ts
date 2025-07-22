@@ -5,7 +5,9 @@ import { Circuit, CircuitState } from '../src';
 
 const windowSize = 10000;
 const resetTimeout = 1000;
-const circuit = Circuit.fixed({ state: CircuitState.Open, windowSize, errorThreshold: 1, resetTimeout, successThreshold: 1 });
+const circuit = Circuit.fixed({
+	state: CircuitState.Open, windowSize, errorThreshold: 1, resetTimeout, successThreshold: 1
+});
 
 async function main() {
 	let x = 0;
