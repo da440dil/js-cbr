@@ -1,6 +1,6 @@
 {
   "name": "@da440dil/cbr",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Circuit breaker",
   "main": "lib/index.js",
   "scripts": {
