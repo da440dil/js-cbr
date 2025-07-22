@@ -1,119 +1,94 @@
-import { promisify } from 'util';
+import { Circuit } from './Circuit';
 import { CircuitBreaker } from './CircuitBreaker';
-import { CircuitState } from './CircuitState';
-import { CircuitError, CircuitBroken } from './CircuitError';
-
-const sleep = promisify(setTimeout);
+import { CircuitError } from './CircuitError';
 
 const resetTimeout = 100;
 
 describe('exec', () => {
-	const breaker = new CircuitBreaker({ errorThreshold: 2, resetTimeout, successThreshold: 2 });
+	beforeAll(() => {
+		jest.useFakeTimers();
+	});
+
+	afterAll(() => {
+		jest.useRealTimers();
+		jest.clearAllTimers();
+	});
+
+	const timestamp = 0;
+	beforeEach(() => {
+		jest.setSystemTime(timestamp);
+	});
+
+	const circuit = Circuit.fixed({ windowSize: 1000, errorThreshold: 2, resetTimeout, successThreshold: 2 });
+	const breaker = new CircuitBreaker(circuit);
 	const fn = jest.fn();
 	const v = 42;
 	const e = new Error('Some error');
 
 	it('should execute a function with circuit breaker logic', async () => {
-		let state: CircuitState = CircuitState.Closed;
-		breaker.on('state', (v: CircuitState) => {
-			state = v;
-		});
-
 		fn.mockResolvedValue(v);
 		await expect(breaker.exec(fn)).resolves.toBe(v);
-		expect(state).toBe(CircuitState.Closed);
 		fn.mockRejectedValue(e);
-		await expect(breaker.exec(fn)).rejects.toThrowError(e);
-		expect(state).toBe(CircuitState.Closed);
-		await expect(breaker.exec(fn)).rejects.toThrowError(e);
-		expect(state).toBe(CircuitState.Open);
+		await expect(breaker.exec(fn)).rejects.toThrow(e);
+		await expect(breaker.exec(fn)).rejects.toThrow(e);
 		fn.mockResolvedValue(v);
-		await expect(breaker.exec(fn)).rejects.toThrowError(CircuitBroken);
+		await expect(breaker.exec(fn)).rejects.toThrow(CircuitError);
 
-		await sleep(resetTimeout);
+		jest.advanceTimersByTime(resetTimeout);
 
 		await expect(breaker.exec(fn)).resolves.toBe(v);
-		expect(state).toBe(CircuitState.HalfOpen);
 		fn.mockRejectedValue(e);
-		await expect(breaker.exec(fn)).rejects.toThrowError(e);
-		expect(state).toBe(CircuitState.Open);
+		await expect(breaker.exec(fn)).rejects.toThrow(e);
 		fn.mockResolvedValue(v);
-		await expect(breaker.exec(fn)).rejects.toThrowError(CircuitBroken);
+		await expect(breaker.exec(fn)).rejects.toThrow(CircuitError);
 
-		await sleep(resetTimeout);
+		jest.advanceTimersByTime(resetTimeout);
 
 		await expect(breaker.exec(fn)).resolves.toBe(v);
-		expect(state).toBe(CircuitState.HalfOpen);
 		await expect(breaker.exec(fn)).resolves.toBe(v);
-		expect(state).toBe(CircuitState.Closed);
 		fn.mockRejectedValue(e);
-		await expect(breaker.exec(fn)).rejects.toThrowError(e);
-		expect(state).toBe(CircuitState.Closed);
-		await expect(breaker.exec(fn)).rejects.toThrowError(e);
-		expect(state).toBe(CircuitState.Open);
+		await expect(breaker.exec(fn)).rejects.toThrow(e);
+		await expect(breaker.exec(fn)).rejects.toThrow(e);
 		fn.mockResolvedValue(v);
-		await expect(breaker.exec(fn)).rejects.toThrowError(CircuitBroken);
+		await expect(breaker.exec(fn)).rejects.toThrow(CircuitError);
 
-		await sleep(resetTimeout);
+		jest.advanceTimersByTime(resetTimeout);
 
 		await Promise.all([
 			expect(breaker.exec(fn)).resolves.toBe(v),
 			expect(breaker.exec(fn)).resolves.toBe(v),
-			expect(breaker.exec(fn)).rejects.toThrowError(CircuitBroken)
+			expect(breaker.exec(fn)).rejects.toThrow(CircuitError)
 		]);
-		expect(state).toBe(CircuitState.Closed);
 	});
 });
 
 describe('exec', () => {
-	const isBreakable = (err: unknown): boolean => {
-		return err instanceof CircuitError;
-	};
-	const breaker = new CircuitBreaker({ errorThreshold: 2, resetTimeout, successThreshold: 2, isBreakable });
+	class CircuitBreakerType extends CircuitBreaker {
+		public override isBreakable(err: unknown): boolean {
+			return err instanceof TypeError;
+		}
+	}
+
+	const circuit = Circuit.fixed({ windowSize: 1000, errorThreshold: 2, resetTimeout, successThreshold: 2 });
+	const breaker = new CircuitBreakerType(circuit);
 	const fn = jest.fn();
 	const v = 42;
 	const e = new Error('Some error');
-	const err = new CircuitError('Breakable error');
+	const err = new TypeError('Breakable error');
 
 	it('should not count error if function throws error which is not breakable', async () => {
 		fn.mockRejectedValue(e);
-		await expect(breaker.exec(fn)).rejects.toThrowError(e);
-		await expect(breaker.exec(fn)).rejects.toThrowError(e);
+		await expect(breaker.exec(fn)).rejects.toThrow(e);
+		await expect(breaker.exec(fn)).rejects.toThrow(e);
 
 		fn.mockResolvedValue(v);
 		await expect(breaker.exec(fn)).resolves.toBe(v);
 
 		fn.mockRejectedValue(err);
-		await expect(breaker.exec(fn)).rejects.toThrowError(err);
-		await expect(breaker.exec(fn)).rejects.toThrowError(err);
+		await expect(breaker.exec(fn)).rejects.toThrow(err);
+		await expect(breaker.exec(fn)).rejects.toThrow(err);
 
 		fn.mockResolvedValue(v);
-		await expect(breaker.exec(fn)).rejects.toThrowError(CircuitBroken);
-	});
-});
-
-describe('Breakable', () => {
-	const breaker = new CircuitBreaker({ errorThreshold: 2, resetTimeout, successThreshold: 2 });
-	const e = new Error('Some error');
-
-	class T {
-		private i = 0;
-
-		@CircuitBreaker.Breakable(breaker)
-		public test(x: number, y: number): Promise<number> {
-			this.i++;
-			return this.i === 1 ? Promise.resolve((this.i + x) * y) : Promise.reject(e);
-		}
-	}
-
-	const t = new T();
-	const x = 2;
-	const y = 3;
-
-	it('should decorate a class method with circuit breaker logic', async () => {
-		await expect(t.test(x, y)).resolves.toBe(9);
-		await expect(t.test(x, y)).rejects.toThrowError(e);
-		await expect(t.test(x, y)).rejects.toThrowError(e);
-		await expect(t.test(x, y)).rejects.toThrowError(CircuitBroken);
+		await expect(breaker.exec(fn)).rejects.toThrow(CircuitError);
 	});
 });

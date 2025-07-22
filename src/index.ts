@@ -1,2 +1,6 @@
+export { Circuit, CircuitParams } from './Circuit';
+export { CircuitState } from './CircuitState';
+export { CircuitStats } from './CircuitStats';
+export { CircuitError } from './CircuitError';
 export { CircuitBreaker } from './CircuitBreaker';
-export { CircuitError, CircuitBroken } from './CircuitError';
+export { Breakable } from './Breakable';
