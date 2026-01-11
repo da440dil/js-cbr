@@ -5,18 +5,34 @@ export class CounterSliding implements ICounter {
 	private prevData: Record<string, number> = {};
 	private currData: Record<string, number> = {};
 	private size: number;
-	private key: number;
+	private time = 0;
+	private timer?: NodeJS.Timeout;
 
 	constructor(size: number) {
 		this.size = size;
-		this.key = this.currKey(Date.now());
 	}
 
-	private currKey(now: number): number {
-		return now - now % this.size;
+	public start(): void {
+		if (!this.timer) {
+			this.time = Date.now();
+			this.timer = setTimeout(() => {
+				this.prevData = this.currData;
+				this.currData = {};
+				if (this.timer) {
+					this.time = Date.now();
+					this.timer.refresh();
+				}
+			}, this.size);
+			this.timer.unref();
+		}
 	}
 
-	public count(key: string): void {
+	public stop(): void {
+		clearTimeout(this.timer);
+		this.timer = undefined;
+	}
+
+	public incr(key: string): void {
 		const v = this.currData[key] || 0;
 		this.currData[key] = v + 1;
 	}
@@ -25,26 +41,12 @@ export class CounterSliding implements ICounter {
 		const prev = this.prevData[key] || 0;
 		let curr = this.currData[key] || 0;
 		if (prev) {
-			const now = Date.now();
-			const currKey = this.currKey(now);
-			const remainder = this.size - (now - currKey);
-			curr += Math.floor(prev * (remainder / this.size));
+			const rest = this.size - (Date.now() - this.time);
+			if (rest > 0) {
+				curr += Math.floor(prev * (rest / this.size));
+			}
 		}
 		return curr;
-	}
-
-	public tidy(): void {
-		const currKey = this.currKey(Date.now());
-		const prevKey = currKey - this.size;
-		if (prevKey >= this.key) {
-			if (prevKey === this.key) {
-				this.prevData = this.currData;
-			} else {
-				this.prevData = {};
-			}
-			this.currData = {};
-			this.key = currKey;
-		}
 	}
 
 	public reset(): void {

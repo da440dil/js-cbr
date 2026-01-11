@@ -5,19 +5,17 @@
 
 [Circuit breaker](https://martinfowler.com/bliki/CircuitBreaker.html).
 
-[Example](./examples/decorator.ts):
+[Example](https://github.com/da440dil/js-cbr/blob/main/examples/decorator.ts):
 ```typescript
 import http from 'node:http';
 import { once } from 'node:events';
 import { setTimeout } from 'node:timers/promises';
-import { Circuit, Breakable } from '@da440dil/cbr';
+import { fixedWindow, Breakable } from '@da440dil/cbr';
 
 // Create circuit which uses "Fixed Window" algorithm to store counters for 10s,
 // switches from "Closed" to "Open" state on first error, from "Open" to "HalfOpen" state after 100ms,
 // from "HalfOpen" to "Closed" state on first success.
-const circuit = Circuit.fixed({
-	windowSize: 10000, errorThreshold: 1, resetTimeout: 100, successThreshold: 1
-});
+const circuit = fixedWindow({ windowSize: 10000, resetTimeout: 100 });
 
 circuit.on('state', (state) => {
 	console.log(`STATE: ${state}`);
@@ -53,7 +51,8 @@ async function main() {
 			console.log(`ERROR: ${err}`);
 		}
 	}
-	await setTimeout(100);
+	console.log(`TIMEOUT ${circuit.resetTimeout}ms`);
+	await setTimeout(circuit.resetTimeout);
 	const data = await client.get();
 	console.log(`DATA: ${data}`);
 	// Output:
@@ -61,6 +60,7 @@ async function main() {
 	// STATE: 1
 	// ERROR: Error: Failed with status 418
 	// ERROR: CircuitError: Circuit broken
+	// TIMEOUT 100ms
 	// STATE: 2
 	// STATE: 0
 	// DATA: { x: 2 }

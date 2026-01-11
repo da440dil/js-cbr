@@ -5,6 +5,7 @@ import { Breakable } from './Breakable';
 describe('Breakable', () => {
 	beforeAll(() => {
 		jest.useFakeTimers();
+		jest.setSystemTime(1612126800142);
 	});
 
 	afterAll(() => {
@@ -12,12 +13,7 @@ describe('Breakable', () => {
 		jest.clearAllTimers();
 	});
 
-	const timestamp = 0;
-	beforeEach(() => {
-		jest.setSystemTime(timestamp);
-	});
-
-	const circuit = Circuit.fixed({ windowSize: 1000, errorThreshold: 2, resetTimeout: 100 });
+	const circuit = Circuit.fixedWindow({ windowSize: 1000, errorThreshold: 2, resetTimeout: 100 });
 	const e = new Error('Some error');
 
 	class T {

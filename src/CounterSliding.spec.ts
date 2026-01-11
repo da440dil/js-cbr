@@ -2,92 +2,77 @@ import { CounterSliding } from './CounterSliding';
 
 beforeAll(() => {
 	jest.useFakeTimers();
+	jest.setSystemTime(1612126800142);
 });
-
 afterAll(() => {
 	jest.useRealTimers();
 	jest.clearAllTimers();
 });
 
-const timestamp = 0;
-beforeEach(() => {
-	jest.setSystemTime(timestamp);
+const size = 1000;
+const counter = new CounterSliding(size);
+
+beforeAll(() => {
+	counter.start();
+});
+afterAll(() => {
+	counter.stop();
 });
 
-const size = 1000;
 const key1 = 'key1';
 const key2 = 'key2';
 
 it('should count', () => {
-	const counter = new CounterSliding(size);
-
 	expect(counter.get(key1)).toBe(0);
 	expect(counter.get(key2)).toBe(0);
 
-	counter.count(key1);
-	expect(counter.get(key1)).toBe(1);
-	expect(counter.get(key2)).toBe(0);
-
-	counter.count(key1);
-	expect(counter.get(key1)).toBe(2);
-	expect(counter.get(key2)).toBe(0);
-
-	counter.count(key2);
-	expect(counter.get(key1)).toBe(2);
-	expect(counter.get(key2)).toBe(1);
-
-	counter.reset();
-	expect(counter.get(key1)).toBe(0);
-	expect(counter.get(key2)).toBe(0);
-
-	counter.count(key1);
-	counter.count(key1);
-	counter.count(key2);
-	counter.count(key2);
-	counter.count(key2);
-	counter.count(key2);
-	expect(counter.get(key1)).toBe(2);
-	expect(counter.get(key2)).toBe(4);
-
-	jest.advanceTimersByTime(size - 1);
-	counter.tidy();
-	expect(counter.get(key1)).toBe(2);
-	expect(counter.get(key2)).toBe(4);
-
-	jest.advanceTimersByTime(1);
-	counter.tidy();
-	expect(counter.get(key1)).toBe(2);
-	expect(counter.get(key2)).toBe(4);
-
-	jest.advanceTimersByTime(size / 2);
-	counter.tidy();
-	expect(counter.get(key1)).toBe(1);
+	counter.incr(key1);
+	counter.incr(key1);
+	counter.incr(key1);
+	counter.incr(key1);
+	counter.incr(key2);
+	counter.incr(key2);
+	expect(counter.get(key1)).toBe(4);
 	expect(counter.get(key2)).toBe(2);
 
-	counter.count(key1);
-	counter.count(key1);
-	counter.count(key2);
-	counter.count(key2);
-	counter.count(key2);
-	expect(counter.get(key1)).toBe(3);
-	expect(counter.get(key2)).toBe(5);
+	jest.advanceTimersByTime(size - 1);
+	expect(counter.get(key1)).toBe(4);
+	expect(counter.get(key2)).toBe(2);
 
-	jest.advanceTimersByTime(size / 2);
-	counter.tidy();
-	expect(counter.get(key1)).toBe(2);
+	jest.advanceTimersByTime(1);
+	expect(counter.get(key1)).toBe(4);
+	expect(counter.get(key2)).toBe(2);
+
+	counter.incr(key1);
+	counter.incr(key1);
+	counter.incr(key2);
+	expect(counter.get(key1)).toBe(6);
 	expect(counter.get(key2)).toBe(3);
 
-	counter.reset();
-	counter.count(key1);
-	counter.count(key1);
-	counter.count(key2);
+	jest.advanceTimersByTime(size / 2);
+	expect(counter.get(key1)).toBe(4);
+	expect(counter.get(key2)).toBe(2);
+
+	counter.incr(key1);
+	counter.incr(key2);
+	expect(counter.get(key1)).toBe(5);
+	expect(counter.get(key2)).toBe(3);
+
+	jest.advanceTimersByTime(size / 2);
+	expect(counter.get(key1)).toBe(3);
+	expect(counter.get(key2)).toBe(2);
+
 	jest.advanceTimersByTime(size);
-	counter.tidy();
+	expect(counter.get(key1)).toBe(0);
+	expect(counter.get(key2)).toBe(0);
+
+	counter.incr(key1);
+	counter.incr(key1);
+	counter.incr(key2);
 	expect(counter.get(key1)).toBe(2);
 	expect(counter.get(key2)).toBe(1);
 
-	jest.advanceTimersByTime(size * 2);
-	counter.tidy();
+	counter.reset();
 	expect(counter.get(key1)).toBe(0);
 	expect(counter.get(key2)).toBe(0);
 });

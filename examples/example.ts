@@ -1,28 +1,13 @@
 import http from 'node:http';
 import { once } from 'node:events';
 import { setTimeout } from 'node:timers/promises';
-import { Circuit, CircuitBreaker } from '../src';
+import { Circuit, Breaker, BreakerOptions } from '../src';
 
-class Client {
-	private breaker: CircuitBreaker;
+export async function main(circuit: Circuit, options?: BreakerOptions) {
+	circuit.on('state', (state) => {
+		console.log(`STATE: ${state}`);
+	});
 
-	constructor(breaker: CircuitBreaker) {
-		this.breaker = breaker;
-	}
-
-	public get(): Promise<string> {
-		// Execute function with circuit breaker logic.
-		return this.breaker.exec(async () => {
-			const res = await fetch('http://localhost:3000');
-			if (res.status !== 200) {
-				throw new Error(`Failed with status ${res.status}`);
-			}
-			return res.text();
-		});
-	}
-}
-
-export async function main(circuit: Circuit) {
 	let x = 0;
 	const server = http.createServer((_, res) => {
 		// { 0 => 200, 1 => 418, 2 => 200, ... => 418 }
@@ -31,11 +16,7 @@ export async function main(circuit: Circuit) {
 	server.listen(3000);
 	await once(server, 'listening');
 
-	circuit.on('state', (state) => {
-		console.log(`STATE: ${state}`);
-	});
-
-	const client = new Client(new CircuitBreaker(circuit));
+	const client = new Client(new Breaker(circuit, options));
 	for (let i = 0; i < 3; i++) {
 		try {
 			const data = await client.get();
@@ -50,4 +31,23 @@ export async function main(circuit: Circuit) {
 
 	server.close();
 	await once(server, 'close');
+}
+
+class Client {
+	private breaker: Breaker;
+
+	constructor(breaker: Breaker) {
+		this.breaker = breaker;
+	}
+
+	public get(): Promise<string> {
+		// Execute function with circuit breaker logic.
+		return this.breaker.exec(async (signal) => {
+			const res = await fetch('http://localhost:3000', { signal });
+			if (res.status !== 200) {
+				throw new Error(`Failed with status ${res.status}`);
+			}
+			return res.text();
+		});
+	}
 }
